@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ménage">
+<meta name="theme-color" content="#0f0f13">
+<title>Ménage · Kylian & Lucia</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+body { background:#0f0f13; color:#f0ece4; font-family:Georgia,serif; min-height:100vh; padding-bottom:calc(20px + env(safe-area-inset-bottom,0px)); }
+
+#header { background:#12121a; border-bottom:1px solid #2a2a38; padding:calc(40px + env(safe-area-inset-top,0px)) 24px 20px; text-align:center; }
+#header .sub { font-size:10px; letter-spacing:.3em; color:#7c6f5e; text-transform:uppercase; margin-bottom:6px; }
+#header h1 { font-size:26px; font-weight:normal; letter-spacing:.05em; }
+#sync-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#3a3a50; margin-left:8px; vertical-align:middle; transition:background .3s; }
+#sync-dot.synced { background:#6dbf87; }
+#sync-dot.syncing { background:#c9a96e; animation:pulse .8s infinite; }
+#sync-dot.error { background:#bf7c7c; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+#tabs { display:flex; border-bottom:1px solid #1e1e2a; background:#0f0f13; position:sticky; top:0; z-index:10; }
+.tab-btn { flex:1; padding:13px 4px; background:none; border:none; border-bottom:2px solid transparent; color:#5a5568; font-family:Georgia,serif; font-size:12px; letter-spacing:.05em; cursor:pointer; transition:all .15s; }
+.tab-btn.active { border-bottom-color:#c9a96e; color:#c9a96e; }
+
+#content { padding:20px 16px 0; max-width:500px; margin:0 auto; }
+
+.week-progress-wrap { margin-bottom:20px; }
+.week-progress-label { display:flex; justify-content:space-between; font-size:11px; color:#7c6f5e; margin-bottom:6px; letter-spacing:.05em; }
+.week-bar-bg { height:6px; background:#1e1e2a; border-radius:10px; overflow:hidden; }
+.week-bar-fill { height:100%; border-radius:10px; background:linear-gradient(90deg,#7c9cbf,#c9a96e); transition:width .6s cubic-bezier(.34,1.56,.64,1); }
+
+#day-picker { display:flex; overflow-x:auto; gap:8px; margin-bottom:20px; scrollbar-width:none; padding-bottom:4px; }
+#day-picker::-webkit-scrollbar { display:none; }
+.day-btn { flex-shrink:0; padding:10px 12px; border-radius:12px; min-width:68px; border:1px solid #1e1e2a; background:#141420; color:#5a5568; cursor:pointer; text-align:center; transition:all .2s; font-family:Georgia,serif; }
+.day-btn.today { border-color:#3a3a50; background:#1e1e30; color:#a09080; }
+.day-btn.active { border-color:#c9a96e; background:#c9a96e18; color:#c9a96e; }
+.day-btn .day-label { font-size:9px; letter-spacing:.15em; text-transform:uppercase; margin-bottom:2px; }
+.day-btn .day-emoji { font-size:17px; }
+.day-btn .day-mini-bar { height:3px; border-radius:4px; background:#1e1e2a; margin-top:5px; overflow:hidden; }
+.day-btn .day-mini-fill { height:100%; border-radius:4px; background:#c9a96e; transition:width .4s ease; }
+
+.day-progress-wrap { margin-bottom:14px; }
+.day-progress-label { display:flex; justify-content:space-between; font-size:11px; color:#7c6f5e; margin-bottom:5px; }
+.day-bar-bg { height:8px; background:#1e1e2a; border-radius:10px; overflow:hidden; }
+.day-bar-fill { height:100%; border-radius:10px; background:linear-gradient(90deg,#7c9cbf,#c9a96e); transition:width .5s cubic-bezier(.34,1.56,.64,1); }
+
+.card { background:#141420; border:1px solid #c9a96e25; border-radius:16px; padding:20px; margin-bottom:16px; transition:border-color .3s; }
+.card.done { border-color:#6dbf8740; }
+.card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+.card-sub { font-size:10px; letter-spacing:.25em; color:#7c6f5e; text-transform:uppercase; }
+.card-title { display:flex; align-items:center; gap:8px; margin-top:4px; font-size:18px; }
+.card-title .emoji { font-size:22px; }
+.badge-done { font-size:10px; color:#6dbf87; background:#6dbf8715; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+
+.task-row { display:flex; align-items:center; gap:10px; padding:11px 0; cursor:pointer; border-bottom:1px solid #1e1e2a; transition:opacity .2s; user-select:none; }
+.task-row:last-child { border-bottom:none; }
+.task-row.checked { opacity:.4; }
+.checkbox { width:22px; height:22px; border-radius:7px; flex-shrink:0; border:2px solid #3a3a50; background:transparent; display:flex; align-items:center; justify-content:center; font-size:11px; color:#0f0f13; transition:all .2s cubic-bezier(.34,1.56,.64,1); }
+.checkbox.checked { border-color:#c9a96e; background:#c9a96e; transform:scale(1.15); }
+.task-label { font-size:14px; flex:1; color:#d0c8bc; }
+.task-label.checked { text-decoration:line-through; color:#4a4a5a; }
+.freq-badge { font-size:9px; letter-spacing:.1em; text-transform:uppercase; border-radius:6px; padding:1px 5px; flex-shrink:0; border:1px solid currentColor; }
+
+.section-label { font-size:10px; letter-spacing:.25em; color:#5a5568; text-transform:uppercase; margin-bottom:10px; }
+.week-list { display:flex; flex-direction:column; gap:5px; margin-bottom:20px; }
+.week-row { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:10px; cursor:pointer; background:#141420; border:1px solid #1e1e2a; transition:all .15s; }
+.week-row.active { background:#1e1e30; border-color:#3a3a50; }
+.week-row-left { display:flex; align-items:center; gap:10px; flex:1; }
+.week-row-info { flex:1; }
+.week-row-day { font-size:11px; color:#6b6055; letter-spacing:.1em; }
+.week-row-day.today-label { color:#c9a96e; }
+.week-row-room { font-size:13px; color:#d0c8bc; }
+.week-row-right { display:flex; align-items:center; gap:8px; }
+.week-mini-bar { width:48px; height:4px; background:#1e1e2a; border-radius:4px; overflow:hidden; }
+.week-mini-fill { height:100%; border-radius:4px; background:#c9a96e; transition:width .4s ease; }
+
+#confetti-overlay { position:fixed; inset:0; pointer-events:none; z-index:999; overflow:hidden; }
+.confetti-piece { position:absolute; opacity:0; animation:confettiFall 1.2s ease-in forwards; }
+@keyframes confettiFall {
+  0%   { opacity:1; transform:translateY(-20px) translateX(0) rotate(0deg) scale(1); }
+  70%  { opacity:1; }
+  100% { opacity:0; transform:translateY(100vh) translateX(var(--drift,0px)) rotate(900deg) scale(.3); }
+}
+
+#week-banner { position:fixed; inset:0; z-index:1000; background:#0f0f13dd; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .4s ease; backdrop-filter:blur(6px); }
+#week-banner.show { opacity:1; pointer-events:all; }
+#week-banner-inner { text-align:center; padding:40px 32px; background:linear-gradient(135deg,#1e1a10,#2a2010); border:1px solid #c9a96e60; border-radius:24px; transform:scale(.8); transition:transform .5s cubic-bezier(.34,1.56,.64,1); max-width:300px; width:90%; }
+#week-banner.show #week-banner-inner { transform:scale(1); }
+#week-banner-emoji { font-size:56px; margin-bottom:12px; }
+#week-banner.show #week-banner-emoji { animation:bounceEmoji 1s cubic-bezier(.34,1.56,.64,1) .3s both; }
+@keyframes bounceEmoji { 0%{transform:scale(0) rotate(-20deg)} 60%{transform:scale(1.3) rotate(10deg)} 100%{transform:scale(1) rotate(0)} }
+#week-banner-title { font-size:24px; color:#c9a96e; letter-spacing:.05em; margin-bottom:8px; }
+#week-banner-sub { font-size:15px; color:#d0c8bc; margin-bottom:20px; }
+#week-banner-tap { font-size:11px; color:#5a5568; letter-spacing:.15em; text-transform:uppercase; }
+
+.day-done-flash { animation:flashGreen .6s ease forwards; }
+@keyframes flashGreen { 0%{box-shadow:0 0 0 0 #6dbf8760} 50%{box-shadow:0 0 0 12px #6dbf8730} 100%{box-shadow:0 0 0 0 transparent} }
+
+.legend { margin-top:16px; padding:12px 16px; background:#1a1218; border:1px solid #bf7c7c30; border-radius:12px; }
+.legend-title { font-size:10px; letter-spacing:.2em; color:#bf7c7c; text-transform:uppercase; margin-bottom:6px; }
+.legend-items { display:flex; gap:12px; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size:12px; color:#a09080; }
+.legend-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.deep-note { font-size:13px; color:#7c6f5e; margin-bottom:16px; line-height:1.5; }
+.rest-msg { color:#5a5568; font-size:13px; font-style:italic; }
+
+
+</style>
+</head>
+<body>
+
+
+
+<div id="week-banner" onclick="this.classList.remove('show')">
+  <div id="week-banner-inner">
+    <div id="week-banner-emoji">🎉</div>
+    <div id="week-banner-title">Semaine complète !</div>
+    <div id="week-banner-sub">Bien joué Kylian &amp; Lucia 🐰🐱</div>
+    <div id="week-banner-tap">Appuie pour fermer</div>
+  </div>
+</div>
+<div id="confetti-overlay"></div>
+
+<div id="header">
+  <div class="sub">Kylian &amp; Lucia 🐰🐱 <span id="sync-dot" title="Synchronisation"></span></div>
+  <h1>Programme Ménage</h1>
+</div>
+
+<div id="tabs">
+  <button class="tab-btn active" onclick="setTab('semaine')">Semaine</button>
+  <button class="tab-btn" onclick="setTab('quotidien')">Quotidien</button>
+  <button class="tab-btn" onclick="setTab('profond')">Ménage profond</button>
+</div>
+
+<div id="content"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── DATA ────────────────────────────────────────────────
+const SCHEDULE = {
+  Lundi:    { room:"Salon", emoji:"🛋️", tasks:[
+    {label:"Ranger",freq:"hebdo"},
+    {label:"Dépoussiérer",freq:"hebdo"},
+    {label:"Poils lapin & chat",freq:"hebdo"},
+    {label:"Vitres",freq:"hebdo"},
+  ]},
+  Mardi:    { room:"Cuisine/SAM", emoji:"🍳", tasks:[
+    {label:"Plans de travail",freq:"hebdo"},
+    {label:"Plaques/hotte",freq:"hebdo"},
+    {label:"Évier",freq:"hebdo"},
+    {label:"Table & chaises",freq:"hebdo"},
+    {label:"Vitres",freq:"hebdo"},
+  ]},
+  Mercredi: { room:"SDB & Toilettes", emoji:"🚿", tasks:[
+    {label:"Douche/baignoire",freq:"hebdo"},
+    {label:"Lavabo & miroir",freq:"hebdo"},
+    {label:"Changer serviettes",freq:"hebdo"},
+    {label:"Sol SDB",freq:"hebdo"},
+    {label:"Vitres SDB",freq:"hebdo"},
+    {label:"Cuvette",freq:"hebdo"},
+    {label:"Réservoir & lunette",freq:"hebdo"},
+    {label:"Poignée WC",freq:"hebdo"},
+  ]},
+  Jeudi:    { room:"Chambre", emoji:"🛏️", tasks:[
+    {label:"Ranger les vêtements",freq:"hebdo"},
+    {label:"Dépoussiérer",freq:"hebdo"},
+    {label:"Vitres",freq:"hebdo"},
+  ]},
+  Vendredi: { room:"Animaux & rattrapage", emoji:"🐰", tasks:[
+    {label:"Cage Volt",freq:"hebdo"},
+    {label:"Litière Fidji",freq:"hebdo"},
+    {label:"Gamelles & eau",freq:"hebdo"},
+    {label:"Brosser Fidji",freq:"hebdo"},
+  ]},
+  Samedi:   { room:"Repos & rattrapage", emoji:"☀️", tasks:[
+    {label:"Poubelles",freq:"hebdo"},
+    {label:"Pièce en retard",freq:"si besoin"},
+  ]},
+  Dimanche: { room:"Repos", emoji:"☀️", tasks:[] },
+};
+
+const DAILY = [
+  "Faire le lit","Aérer","Vaisselle",
+  "Plaques de cuisson","Plan de travail",
+  "Ranger avant de dormir",
+  "Eau lapin & chat","Litière Fidji",
+  "Lessive","Aspirer (toutes pièces)",
+];
+
+const DEEP = [
+  {label:"Dégivrer frigo & congél",freq:"trimestriel"},
+  {label:"Joints douche",freq:"mensuel"},
+  {label:"Derrière meubles & appareils",freq:"trimestriel"},
+  {label:"Laver couettes & oreillers",freq:"trimestriel"},
+  {label:"Nettoyer four",freq:"mensuel"},
+  {label:"Détartrer cafetière",freq:"mensuel"},
+];
+
+const FREQ_COLOR = {
+  "hebdo":"#7c9cbf","si besoin":"#a09080",
+  "mensuel":"#c9a96e","trimestriel":"#bf7c7c",
+};
+
+const DAYS = Object.keys(SCHEDULE);
+const TODAY_DAY = (()=>{ const j=new Date().getDay(); return DAYS[j===0?6:j-1]; })();
+
+// ── TIME KEYS ────────────────────────────────────────────
+function todayKey()   { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function weekKey()    { const d=new Date(),j4=new Date(d.getFullYear(),0,4),w=Math.ceil(((d-j4)/86400000+j4.getDay()+1)/7); return `${d.getFullYear()}-W${String(w).padStart(2,'0')}`; }
+function monthKey()   { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function quarterKey() { const d=new Date(); return `${d.getFullYear()}-Q${Math.floor(d.getMonth()/3)+1}`; }
+
+// ── FIREBASE STATE ───────────────────────────────────────
+let db = null;
+let state = { weekly:{}, daily:{}, deep:{} };
+let currentTab='semaine', currentDay=TODAY_DAY, prevWeekDone=false;
+
+function setSyncDot(status){ // synced | syncing | error
+  const dot=document.getElementById('sync-dot');
+  dot.className=''; dot.classList.add(status);
+}
+
+// ── FIREBASE CONFIG ──────────────────────────────────────
+function initFirebase(){
+  const config = {
+    apiKey: "AIzaSyBhn29TxydeXaVVAxSaSqrgun1RD99IMtQ",
+    authDomain: "cleany-182b4.firebaseapp.com",
+    databaseURL: "https://cleany-182b4-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "cleany-182b4",
+    storageBucket: "cleany-182b4.firebasestorage.app",
+    messagingSenderId: "373331580304",
+    appId: "1:373331580304:web:cff305d07734ca2db3cf15"
+  };
+  const app = initializeApp(config);
+  db = getDatabase(app);
+  setSyncDot('syncing');
+  subscribeToState();
+}
+
+// ── REALTIME SYNC ────────────────────────────────────────
+function subscribeToState(){
+  const weekRef = ref(db, `menage/weekly/${weekKey()}`);
+  const dailyRef = ref(db, `menage/daily/${todayKey()}`);
+  const deepRef = ref(db, `menage/deep`);
+
+  onValue(weekRef, snap=>{ state.weekly=snap.val()||{}; setSyncDot('synced'); render(); checkWeekComplete(); });
+  onValue(dailyRef, snap=>{ state.daily=snap.val()||{}; render(); });
+  onValue(deepRef, snap=>{ state.deep=snap.val()||{}; render(); });
+}
+
+function writeWeekly(){ setSyncDot('syncing'); set(ref(db,`menage/weekly/${weekKey()}`), state.weekly).then(()=>setSyncDot('synced')).catch(()=>setSyncDot('error')); }
+function writeDaily(){  setSyncDot('syncing'); set(ref(db,`menage/daily/${todayKey()}`), state.daily).then(()=>setSyncDot('synced')).catch(()=>setSyncDot('error')); }
+function writeDeep(){   setSyncDot('syncing'); set(ref(db,`menage/deep`), state.deep).then(()=>setSyncDot('synced')).catch(()=>setSyncDot('error')); }
+
+// ── DEEP DONE CHECK ──────────────────────────────────────
+function isDeepDone(i){
+  const e=state.deep[i]; if(!e) return false;
+  const f=DEEP[i].freq;
+  return f==='hebdo'?e.key===weekKey():f==='mensuel'?e.key===monthKey():e.key===quarterKey();
+}
+
+// ── PROGRESS ─────────────────────────────────────────────
+function dayProgress(day){
+  const tasks=SCHEDULE[day].tasks; if(!tasks.length) return null;
+  const done=tasks.filter((_,i)=>state.weekly[`${day}-${i}`]).length;
+  return {done,total:tasks.length,pct:Math.round(done/tasks.length*100)};
+}
+function weekProgress(){
+  const activeDays=DAYS.filter(d=>SCHEDULE[d].tasks.length>0);
+  let total=0,done=0;
+  activeDays.forEach(day=>{ SCHEDULE[day].tasks.forEach((_,i)=>{ total++; if(state.weekly[`${day}-${i}`]) done++; }); });
+  return {done,total,pct:total?Math.round(done/total*100):0,complete:done===total&&total>0};
+}
+
+// ── CONFETTI ─────────────────────────────────────────────
+function launchConfetti(big=false){
+  const overlay=document.getElementById('confetti-overlay');
+  const colors=['#c9a96e','#6dbf87','#7c9cbf','#f0ece4','#bf7c7c','#e8c97a','#ffffff','#ffd700'];
+  const count=big?150:30;
+  overlay.innerHTML='';
+  for(let i=0;i<count;i++){
+    const el=document.createElement('div');
+    el.className='confetti-piece';
+    const size=big?5+Math.random()*12:5+Math.random()*7;
+    el.style.cssText=`left:${big?Math.random()*100:30+Math.random()*40}%;top:-10px;background:${colors[Math.floor(Math.random()*colors.length)]};width:${size}px;height:${size}px;border-radius:${Math.random()>.4?'50%':'2px'};animation-delay:${Math.random()*(big?1.2:.4)}s;animation-duration:${big?1.6+Math.random()*1.4:.8+Math.random()*.5}s;--drift:${(Math.random()-.5)*300}px;`;
+    overlay.appendChild(el);
+  }
+  setTimeout(()=>overlay.innerHTML='',big?4500:1800);
+}
+
+function checkWeekComplete(){
+  const wp=weekProgress();
+  if(wp.complete&&!prevWeekDone){
+    prevWeekDone=true;
+    setTimeout(()=>{
+      document.getElementById('week-banner').classList.add('show');
+      launchConfetti(true);
+      setTimeout(()=>launchConfetti(true),800);
+      setTimeout(()=>launchConfetti(true),1600);
+    },400);
+  } else if(!wp.complete){ prevWeekDone=false; }
+}
+
+// ── RENDER ───────────────────────────────────────────────
+function render(){
+  const c=document.getElementById('content');
+  if(currentTab==='semaine') c.innerHTML=renderSemaine();
+  else if(currentTab==='quotidien') c.innerHTML=renderQuotidien();
+  else c.innerHTML=renderProfond();
+}
+
+function renderSemaine(){
+  const wp=weekProgress();
+  let html=`<div class="week-progress-wrap">
+    <div class="week-progress-label"><span>Semaine en cours</span><span>${wp.done}/${wp.total} tâches</span></div>
+    <div class="week-bar-bg"><div class="week-bar-fill" style="width:${wp.pct}%"></div></div>
+  </div><div id="day-picker">`;
+  DAYS.forEach(day=>{
+    const pr=dayProgress(day); const pct=pr?pr.pct:0;
+    const isActive=day===currentDay, isToday=day===TODAY_DAY;
+    html+=`<button class="day-btn${isActive?' active':isToday?' today':''}" onclick="selectDay('${day}')">
+      <div class="day-label">${day.slice(0,3)}</div>
+      <div class="day-emoji">${SCHEDULE[day].emoji}</div>
+      <div class="day-mini-bar"><div class="day-mini-fill" style="width:${pct}%"></div></div>
+    </button>`;
+  });
+  html+='</div>';
+
+  const info=SCHEDULE[currentDay]; const tasks=info.tasks;
+  const pr=dayProgress(currentDay); const dayDone=pr&&pr.done===pr.total;
+  html+=`<div class="card${dayDone?' done':''}" id="day-card">
+    <div class="card-header">
+      <div><div class="card-sub">${currentDay}</div><div class="card-title"><span class="emoji">${info.emoji}</span>${info.room}</div></div>
+      ${dayDone?'<div class="badge-done">✓ Terminé</div>':''}
+    </div>`;
+  if(pr) html+=`<div class="day-progress-wrap"><div class="day-progress-label"><span>${pr.done}/${pr.total} tâches</span><span>${pr.pct}%</span></div><div class="day-bar-bg"><div class="day-bar-fill" style="width:${pr.pct}%"></div></div></div>`;
+  if(!tasks.length) html+='<div class="rest-msg">Repos bien mérité 😌</div>';
+  else tasks.forEach((t,i)=>{ html+=taskRowHTML(`week-${currentDay}-${i}`,t.label,t.freq,!!state.weekly[`${currentDay}-${i}`]); });
+  html+='</div><div class="section-label">Planning</div><div class="week-list">';
+  DAYS.forEach(day=>{
+    const pr=dayProgress(day); const pct=pr?pr.pct:0;
+    const isActive=day===currentDay, isToday=day===TODAY_DAY;
+    html+=`<div class="week-row${isActive?' active':''}" onclick="selectDay('${day}')">
+      <div class="week-row-left"><span style="font-size:16px">${SCHEDULE[day].emoji}</span>
+        <div class="week-row-info"><div class="week-row-day${isToday?' today-label':''}">${day}</div><div class="week-row-room">${SCHEDULE[day].room}</div></div>
+      </div>
+      <div class="week-row-right">
+        ${pr?`<div class="week-mini-bar"><div class="week-mini-fill" style="width:${pct}%"></div></div>`:''}
+        ${pr&&pr.done===pr.total?'<span style="font-size:11px;color:#6dbf87">✓</span>':''}
+      </div>
+    </div>`;
+  });
+  return html+'</div>';
+}
+
+function renderQuotidien(){
+  const done=DAILY.filter((_,i)=>state.daily[i]).length;
+  const pct=Math.round(done/DAILY.length*100);
+  let html=`<div class="card">
+    <div class="card-header"><div><div class="card-sub">Tous les jours</div><div style="font-size:17px;margin-top:3px">Tâches globales</div></div>${done===DAILY.length?'<div class="badge-done">✓ Tout fait</div>':''}</div>
+    <div class="day-progress-wrap"><div class="day-progress-label"><span>${done}/${DAILY.length}</span><span>${pct}%</span></div><div class="day-bar-bg"><div class="day-bar-fill" style="width:${pct}%"></div></div></div>`;
+  DAILY.forEach((label,i)=>{ html+=taskRowHTML(`daily-${i}`,label,null,!!state.daily[i]); });
+  return html+'</div>';
+}
+
+function renderProfond(){
+  const done=DEEP.filter((_,i)=>isDeepDone(i)).length;
+  const pct=Math.round(done/DEEP.length*100);
+  let html=`<div class="deep-note">À faire ponctuellement — se remet à zéro automatiquement.</div>
+  <div class="card"><div class="day-progress-wrap" style="margin-bottom:14px"><div class="day-progress-label"><span>${done}/${DEEP.length} faits</span><span>${pct}%</span></div><div class="day-bar-bg"><div class="day-bar-fill" style="width:${pct}%"></div></div></div>`;
+  DEEP.forEach((t,i)=>{ html+=taskRowHTML(`deep-${i}`,t.label,t.freq,isDeepDone(i)); });
+  html+=`</div><div class="legend"><div class="legend-title">Remise à zéro auto</div><div class="legend-items">
+    <div class="legend-item"><span class="legend-dot" style="background:#7c9cbf"></span>hebdo → lundi</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#c9a96e"></span>mensuel → 1er du mois</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#bf7c7c"></span>trimestriel → début trimestre</div>
+  </div></div>`;
+  return html;
+}
+
+function taskRowHTML(id,label,freq,checked){
+  const badge=freq?`<span class="freq-badge" style="color:${FREQ_COLOR[freq]||'#a09080'};border-color:${FREQ_COLOR[freq]||'#3a3a50'}">${freq}</span>`:'';
+  return `<div class="task-row${checked?' checked':''}" onclick="toggleTask('${id}')">
+    <div class="checkbox${checked?' checked':''}">${checked?'✓':''}</div>
+    <span class="task-label${checked?' checked':''}">${label}</span>${badge}
+  </div>`;
+}
+
+// ── EVENTS ───────────────────────────────────────────────
+window.setTab = function(tab){
+  currentTab=tab;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['semaine','quotidien','profond'][i]===tab));
+  render();
+};
+window.selectDay = function(day){ currentDay=day; render(); };
+
+window.toggleTask = function(id){
+  const wasDayDone=currentTab==='semaine'?(()=>{ const pr=dayProgress(currentDay); return pr&&pr.done===pr.total; })():false;
+
+  if(id.startsWith('week-')){
+    const parts=id.slice(5).split('-'); const i=parts.pop(); const day=parts.join('-');
+    state.weekly[`${day}-${i}`]=!state.weekly[`${day}-${i}`];
+    writeWeekly();
+  } else if(id.startsWith('daily-')){
+    const i=id.slice(6); state.daily[i]=!state.daily[i]; writeDaily();
+  } else if(id.startsWith('deep-')){
+    const i=id.slice(5); const freq=DEEP[i].freq;
+    const key=freq==='hebdo'?weekKey():freq==='mensuel'?monthKey():quarterKey();
+    if(isDeepDone(i)) delete state.deep[i]; else state.deep[i]={key};
+    writeDeep();
+  }
+
+  render();
+  if(currentTab==='semaine'){
+    const pr=dayProgress(currentDay);
+    if(pr&&pr.done===pr.total&&!wasDayDone){
+      launchConfetti(false);
+      setTimeout(()=>{ const card=document.getElementById('day-card'); if(card) card.classList.add('day-done-flash'); },100);
+    }
+    checkWeekComplete();
+  }
+};
+
+// ── INIT ─────────────────────────────────────────────────
+initFirebase();
+</script>
+</body>
+</html>
